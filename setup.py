@@ -18,26 +18,24 @@
 # DEALINGS IN THE SOFTWARE.
 import os
 
-from pkg_resources import parse_requirements
 from setuptools import find_packages, setup
 
 KW = ["artificial intelligence", "deep learning", "unsupervised learning", "contrastive learning"]
 
+
+def parse_requirements(path):
+    with open(path) as f:
+        return [line.strip() for line in f if line.strip()]
+
+
 REQUIREMENTS_FILE = os.path.join(os.path.dirname(__file__), "requirements.txt")
-with open(REQUIREMENTS_FILE) as fo:
-    REQUIREMENTS = [str(req) for req in parse_requirements(fo.readlines())]
+REQUIREMENTS = parse_requirements(REQUIREMENTS_FILE)
 
 EXTRA_REQUIREMENTS = {
     "dali": ["nvidia-dali-cuda110"],
     "umap": ["matplotlib", "seaborn", "pandas", "umap-learn"],
     "h5": ["h5py"],
 }
-
-
-def parse_requirements(path):
-    with open(path) as f:
-        requirements = [p.strip().split()[-1] for p in f.readlines()]
-    return requirements
 
 
 setup(
