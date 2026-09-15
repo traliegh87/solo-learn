@@ -37,16 +37,20 @@ else:
     _h5_available = True
 
 
-def build_custom_pipeline():
+def build_custom_pipeline(crop_size: int = 224):
     """Builds augmentation pipelines for custom data.
     If you want to do exoteric augmentations, you can just re-write this function.
     Needs to return a dict with the same structure.
+
+    Args:
+        crop_size (int): resolution the backbone expects. The val resize keeps the same
+            resize-then-center-crop ratio as the original 256/224 ImageNet recipe.
     """
 
     pipeline = {
         "T_train": transforms.Compose(
             [
-                transforms.RandomResizedCrop(size=224, scale=(0.08, 1.0)),
+                transforms.RandomResizedCrop(size=crop_size, scale=(0.08, 1.0)),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD),
@@ -54,8 +58,8 @@ def build_custom_pipeline():
         ),
         "T_val": transforms.Compose(
             [
-                transforms.Resize(256),  # resize shorter
-                transforms.CenterCrop(224),  # take center crop
+                transforms.Resize(int(crop_size * 256 / 224)),  # resize shorter
+                transforms.CenterCrop(crop_size),  # take center crop
                 transforms.ToTensor(),
                 transforms.Normalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD),
             ]
@@ -64,11 +68,14 @@ def build_custom_pipeline():
     return pipeline
 
 
-def prepare_transforms(dataset: str) -> Tuple[nn.Module, nn.Module]:
+def prepare_transforms(dataset: str, crop_size: Optional[int] = None) -> Tuple[nn.Module, nn.Module]:
     """Prepares pre-defined train and test transformation pipelines for some datasets.
 
     Args:
         dataset (str): dataset name.
+        crop_size (Optional[int]): resolution to use for the "custom" dataset pipeline.
+            Ignored for every other dataset, which have a fixed intrinsic resolution.
+            Defaults to 224 (the original hardcoded behavior) when not given.
 
     Returns:
         Tuple[nn.Module, nn.Module]: training and validation transformation pipelines.
@@ -128,7 +135,7 @@ def prepare_transforms(dataset: str) -> Tuple[nn.Module, nn.Module]:
         ),
     }
 
-    custom_pipeline = build_custom_pipeline()
+    custom_pipeline = build_custom_pipeline(crop_size=crop_size or 224)
 
     pipelines = {
         "cifar10": cifar_pipeline,
@@ -284,6 +291,7 @@ def prepare_data(
     download: bool = True,
     data_fraction: float = -1.0,
     auto_augment: bool = False,
+    crop_size: Optional[int] = None,
 ) -> Tuple[DataLoader, DataLoader]:
     """Prepares transformations, creates dataset objects and wraps them in dataloaders.
 
@@ -301,12 +309,14 @@ def prepare_data(
             Defaults to -1.0.
         auto_augment (bool, optional): use auto augment following timm.data.create_transform.
             Defaults to False.
+        crop_size (Optional[int]): resolution to use for the "custom" dataset pipeline.
+            Ignored for every other dataset. Defaults to 224 when not given.
 
     Returns:
         Tuple[DataLoader, DataLoader]: prepared training and validation dataloader.
     """
 
-    T_train, T_val = prepare_transforms(dataset)
+    T_train, T_val = prepare_transforms(dataset, crop_size=crop_size)
     if auto_augment:
         T_train = create_transform(
             input_size=224,
