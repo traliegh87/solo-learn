@@ -21,7 +21,7 @@ datasets/
 bash_files/*.png
 bash_files/*.jpg
 bash_files/*.jpeg
-
+*.jpg
 downstream/*.png
 downstream/*.jpg
 downstream/*.jpeg
