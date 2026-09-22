@@ -54,9 +54,18 @@ checkpoint:
 auto_resume:
   enabled: True
 
+auto_umap:
+  enabled: true
+  frequency: 1
+
+knn_eval:
+  enabled: true
+  k: 20
+  distance_func: euclidean
+
 # overwrite PL stuff
 max_epochs: 400
-devices: [0, 1]
+devices: [1]
 sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"

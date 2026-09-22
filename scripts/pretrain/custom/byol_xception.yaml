@@ -14,13 +14,10 @@ hydra:
   run:
     dir: .
 
-name: "byol-vit_base-448-vtcv"
+name: "byol-xception-448-vtcv"
 method: "byol"
 backbone:
-  name: "vit_base"
-  kwargs:
-    img_size: 448
-    patch_size: 16
+  name: "xception"
 method_kwargs:
   proj_hidden_dim: 4096
   proj_output_dim: 256
@@ -39,11 +36,15 @@ data:
   # convert a custom dataset by following `scripts/utils/convert_imgfolder_to_h5.py`
   no_labels: False
 optimizer:
-  name: "adamw"
-  batch_size: 32  # per-GPU; conservative starting point for vit_base @ 448px, tune up if memory allows
-  lr: 3.0e-4
-  classifier_lr: 3.0e-4
-  weight_decay: 0.1
+  name: "lars"
+  batch_size: 64
+  lr: 0.5
+  classifier_lr: 0.1
+  weight_decay: 1e-6
+  kwargs:
+    clip_lr: True
+    eta: 0.02
+    exclude_bias_n_norm: True
 scheduler:
   name: "warmup_cosine"
 checkpoint:
@@ -64,7 +65,7 @@ knn_eval:
 
 # overwrite PL stuff
 max_epochs: 400
-devices: [1, 2]
+devices: [1]
 sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
