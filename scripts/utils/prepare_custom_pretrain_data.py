@@ -20,6 +20,7 @@
 import argparse
 import os
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 
@@ -76,11 +77,12 @@ def build_split(
     out_dir: str,
     collisions_dir: str,
     path_col: str,
-    label_col: str,
+    label_col: Optional[str],
     specimen_col: str,
     view_col: str,
     tray_col: str,
     split_name: str,
+    no_labels: bool = False,
 ) -> None:
     existing_df = df[df[path_col].apply(lambda p: Path(p).is_file())]
     missing = len(df) - len(existing_df)
@@ -104,15 +106,28 @@ def build_split(
             f"linked {linked} images (skipped {duplicates} exact dups) into {collisions_dir}"
         )
 
-    def clean_dest(row):
-        suffix = Path(getattr(row, path_col)).suffix
-        label, specimen, view = getattr(row, label_col), getattr(row, specimen_col), getattr(row, view_col)
-        return Path(out_dir) / str(label) / f"{specimen}_{view}{suffix}"
+    if no_labels:
+
+        def clean_dest(row):
+            suffix = Path(getattr(row, path_col)).suffix
+            specimen, view = getattr(row, specimen_col), getattr(row, view_col)
+            return Path(out_dir) / f"{specimen}_{view}{suffix}"
+
+    else:
+
+        def clean_dest(row):
+            suffix = Path(getattr(row, path_col)).suffix
+            label, specimen, view = getattr(row, label_col), getattr(row, specimen_col), getattr(row, view_col)
+            return Path(out_dir) / str(label) / f"{specimen}_{view}{suffix}"
 
     linked, duplicates = link_rows(clean_df, path_col, clean_dest)
     out_root = Path(out_dir)
-    num_classes = sum(1 for entry in os.scandir(out_root) if entry.is_dir()) if out_root.is_dir() else 0
-    print(f"[{split_name}] linked {linked} images into {num_classes} class folders under {out_root}")
+    if no_labels:
+        num_files = sum(1 for entry in os.scandir(out_root) if entry.is_file()) if out_root.is_dir() else 0
+        print(f"[{split_name}] linked {linked} images into flat folder {out_root} ({num_files} files total)")
+    else:
+        num_classes = sum(1 for entry in os.scandir(out_root) if entry.is_dir()) if out_root.is_dir() else 0
+        print(f"[{split_name}] linked {linked} images into {num_classes} class folders under {out_root}")
     if duplicates:
         print(f"[{split_name}] skipped {duplicates} duplicate rows (same source image seen twice)")
     if missing:
@@ -124,6 +139,11 @@ if __name__ == "__main__":
     parser.add_argument("--csv", type=str, required=True, help="path to existing_data.csv")
     parser.add_argument("--path-col", type=str, default="Id", help="column with the absolute image path")
     parser.add_argument("--label-col", type=str, default="y", help="column with the class label")
+    parser.add_argument(
+        "--no-labels",
+        action="store_true",
+        help="link images into a flat output folder, ignoring --label-col, for unsupervised pretraining",
+    )
     parser.add_argument("--specimen-col", type=str, default="Specimen_Id")
     parser.add_argument("--view-col", type=str, default="View")
     parser.add_argument("--tray-col", type=str, default="Tray_Id")
@@ -142,6 +162,9 @@ if __name__ == "__main__":
 
     df = pd.read_csv(args.csv)
 
+    if args.expected_num_classes is not None and args.no_labels:
+        parser.error("--expected-num-classes doesn't apply with --no-labels (there are no class folders)")
+
     train_df = df[df[args.split_col] == args.train_split_value]
     build_split(
         train_df,
@@ -153,6 +176,7 @@ if __name__ == "__main__":
         args.view_col,
         args.tray_col,
         "train",
+        no_labels=args.no_labels,
     )
 
     if args.expected_num_classes is not None:
@@ -175,4 +199,5 @@ if __name__ == "__main__":
             args.view_col,
             args.tray_col,
             "val",
+            no_labels=args.no_labels,
         )

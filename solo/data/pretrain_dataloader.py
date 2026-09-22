@@ -31,6 +31,8 @@ from torch.utils.data.dataset import Dataset
 from torchvision import transforms
 from torchvision.datasets import STL10, ImageFolder
 
+from solo.utils.misc import list_image_files_recursive
+
 try:
     from solo.data.h5_dataset import H5Dataset
 except ImportError:
@@ -61,10 +63,10 @@ class CustomDatasetWithoutLabels(Dataset):
     def __init__(self, root, transform=None):
         self.root = Path(root)
         self.transform = transform
-        self.images = os.listdir(root)
+        self.images = list_image_files_recursive(self.root)
 
     def __getitem__(self, index):
-        path = self.root / self.images[index]
+        path = self.images[index]
         x = Image.open(path).convert("RGB")
         if self.transform is not None:
             x = self.transform(x)

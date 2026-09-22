@@ -33,7 +33,7 @@ from nvidia.dali.plugin.pytorch import DALIGenericIterator, LastBatchPolicy
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 from solo.data.temp_dali_fix import TempDALIGenericIterator
-from solo.utils.misc import omegaconf_select
+from solo.utils.misc import list_image_files_recursive, omegaconf_select
 
 
 class RandomGrayScaleConversion:
@@ -505,7 +505,7 @@ class PretrainPipelineBuilder:
 
         # manually load files and labels
         if no_labels:
-            files = [data_path / f for f in sorted(os.listdir(data_path))]
+            files = list_image_files_recursive(data_path)
             labels = [-1] * len(files)
         else:
             labels = sorted(Path(entry.name) for entry in os.scandir(data_path) if entry.is_dir())

@@ -20,6 +20,7 @@
 import logging
 import math
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -29,6 +30,7 @@ import torch.nn as nn
 from omegaconf import OmegaConf
 from timm.models.helpers import group_parameters
 from timm.optim.optim_factory import _layer_map
+from torchvision.datasets.folder import IMG_EXTENSIONS
 
 
 try:
@@ -451,3 +453,9 @@ def omegaconf_select(cfg, key, default=None):
     if value == "None":
         return None
     return value
+
+
+def list_image_files_recursive(root) -> List[Path]:
+    """Recursively lists image files under root, ignoring any subdirectory structure."""
+    root = Path(root)
+    return sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in IMG_EXTENSIONS)
