@@ -84,13 +84,13 @@ class WeightedKNNClassifier(Metric):
 
         if train_features is not None:
             assert train_features.size(0) == train_targets.size(0)
-            self.train_features.append(train_features.detach())
-            self.train_targets.append(train_targets.detach())
+            self.train_features.append(train_features.detach().cpu())
+            self.train_targets.append(train_targets.detach().cpu())
 
         if test_features is not None:
             assert test_features.size(0) == test_targets.size(0)
-            self.test_features.append(test_features.detach())
-            self.test_targets.append(test_targets.detach())
+            self.test_features.append(test_features.detach().cpu())
+            self.test_targets.append(test_targets.detach().cpu())
 
     @torch.no_grad()
     def compute(self) -> Tuple[float]:
@@ -111,6 +111,12 @@ class WeightedKNNClassifier(Metric):
         train_targets = torch.cat(self.train_targets)
         test_features = torch.cat(self.test_features)
         test_targets = torch.cat(self.test_targets)
+
+        if torch.cuda.is_available():
+            train_features = train_features.cuda(non_blocking=True)
+            train_targets = train_targets.cuda(non_blocking=True)
+            test_features = test_features.cuda(non_blocking=True)
+            test_targets = test_targets.cuda(non_blocking=True)
 
         if self.distance_fx == "cosine":
             train_features = F.normalize(train_features)

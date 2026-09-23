@@ -70,3 +70,7 @@ sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
 precision: 16-mixed
+# Xception's ~40 BatchNorm2d layers are noisy at small batch sizes (no sync_batchnorm
+# partner on a single GPU); clipping the raw gradient norm tames the resulting per-step
+# loss spikes. This is independent of LARS's clip_lr, which only clips the trust ratio.
+gradient_clip_val: 1.0

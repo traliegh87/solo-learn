@@ -117,6 +117,20 @@ def parse_cfg(cfg: omegaconf.DictConfig):
     # assert dataset parameters
     cfg = add_and_assert_dataset_cfg(cfg)
 
+    # knn_eval's online train-feature buffer (solo/methods/base.py training_step) is only
+    # cleared when a validation epoch runs (solo/utils/knn.py compute() -> reset()). Without
+    # a validation set it accumulates a full, un-cleared feature tensor every training step
+    # for the whole run, eventually exhausting GPU memory. Disable it instead of silently
+    # leaking.
+    no_validation = cfg.data.val_path is None or (cfg.data.dataset == "custom" and cfg.data.no_labels)
+    if no_validation and omegaconf_select(cfg, "knn_eval.enabled", False):
+        print(
+            "[solo-learn] knn_eval.enabled=True but no validation set is configured "
+            "(data.val_path is None or data.no_labels=True) -- disabling knn_eval to avoid "
+            "unbounded growth of its online train-feature buffer."
+        )
+        cfg.knn_eval.enabled = False
+
     # default values for wandb
     cfg = add_and_assert_wandb_cfg(cfg)
 
