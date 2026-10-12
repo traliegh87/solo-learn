@@ -92,6 +92,13 @@ class WeightedKNNClassifier(Metric):
             self.test_features.append(test_features.detach().cpu())
             self.test_targets.append(test_targets.detach().cpu())
 
+    def _sync_dist(self, *args, **kwargs):
+        # the feature buffers live on CPU to save GPU memory, but NCCL can only all_gather
+        # CUDA tensors, so move them back to the metric's device just for the sync
+        for attr in ("train_features", "train_targets", "test_features", "test_targets"):
+            setattr(self, attr, [t.to(self.device) for t in getattr(self, attr)])
+        super()._sync_dist(*args, **kwargs)
+
     @torch.no_grad()
     def compute(self) -> Tuple[float]:
         """Computes weighted k-NN accuracy @1 and @5. If cosine distance is selected,

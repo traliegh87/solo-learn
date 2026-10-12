@@ -40,6 +40,7 @@ from solo.backbones import (
     vit_tiny,
     wide_resnet28w2,
     wide_resnet28w8,
+    xception,
 )
 
 
@@ -148,3 +149,20 @@ def test_backbones():
     dummy_data = torch.randn(6, 3, 224, 224)
     model = resnet50(method=None)
     assert isinstance(model(dummy_data), torch.Tensor)
+
+    # Xception
+    dummy_data = torch.randn(2, 3, 448, 448)
+    model = xception(method=None)
+    out = model(dummy_data)
+    assert out.shape == (2, model.num_features) == (2, 2048)
+
+
+def test_xception_residual_branches_start_as_identity():
+    from pretrainedmodels.models.xception import Block
+
+    model = xception(method=None)
+    blocks = [m for m in model.modules() if isinstance(m, Block)]
+    assert len(blocks) == 12
+    for block in blocks:
+        last_bn = [m for m in block.rep if isinstance(m, torch.nn.BatchNorm2d)][-1]
+        assert torch.all(last_bn.weight == 0)

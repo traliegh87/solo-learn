@@ -47,6 +47,7 @@ optimizer:
     exclude_bias_n_norm: True
 scheduler:
   name: "warmup_cosine"
+  warmup_epochs: 10
 checkpoint:
   enabled: True
   dir: "trained_models"
@@ -69,8 +70,10 @@ devices: [1]
 sync_batchnorm: True
 accelerator: "gpu"
 strategy: "ddp"
-precision: 16-mixed
-# Xception's ~40 BatchNorm2d layers are noisy at small batch sizes (no sync_batchnorm
-# partner on a single GPU); clipping the raw gradient norm tames the resulting per-step
-# loss spikes. This is independent of LARS's clip_lr, which only clips the trust ratio.
+# bf16 has fp32 range, so no loss-scaler overflow; use 16-mixed on pre-Ampere GPUs
+precision: bf16-mixed
+# Safety net only. LARS normalizes each weight's update by its own gradient norm, so global
+# clipping barely affects conv/linear weights; it mainly bounds the BN/bias params that LARS
+# excludes (exclude_bias_n_norm) and that otherwise take plain SGD steps. The actual fix for the
+# instability is the backbone init in solo/backbones/xception/xception.py.
 gradient_clip_val: 1.0
